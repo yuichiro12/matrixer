@@ -13,7 +13,7 @@ type Column struct {
 	Func func([]float64) (string, error)
 }
 
-type Columns []Column
+type Columns []*Column
 
 func (cs *Columns) AddPrefix(s string) {
 	for i := 0; i < len(*cs); i++ {
@@ -31,15 +31,15 @@ type ColumnType int
 
 const (
 	STATS ColumnType = iota
-	LABEL
+	GROUP
 )
 
-func GetDefaultColumns(labelNames ...string) Columns {
-	return append(GetLabelColumns(labelNames...), GetDefaultStatColumns()...)
+func GetDefaultColumns(groups ...string) Columns {
+	return append(GetGroupColumns(groups...), GetDefaultStatColumns()...)
 }
 
-func GetDefaultColumnsWithLoggedAt(labelNames ...string) Columns {
-	return append(GetLoggedAtColumn(), GetDefaultColumns(labelNames...)...)
+func GetDefaultColumnsWithLoggedAt(groups ...string) Columns {
+	return append(GetLoggedAtColumn(), GetDefaultColumns(groups...)...)
 }
 
 func GetLoggedAtColumn() Columns {
@@ -53,11 +53,11 @@ func GetLoggedAtColumn() Columns {
 	}
 }
 
-func GetLabelColumns(names ...string) Columns {
+func GetGroupColumns(names ...string) Columns {
 	var labelCols Columns
 	for i := 0; i < len(names); i++ {
-		labelCols = append(labelCols, Column{
-			Type: LABEL,
+		labelCols = append(labelCols, &Column{
+			Type: GROUP,
 			Name: names[i],
 		})
 	}

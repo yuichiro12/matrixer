@@ -1,19 +1,20 @@
 package matrixer
 
 import (
+	"sort"
 	"strings"
 	"time"
 )
 
-type Float64Item struct {
-	Value  float64
-	Labels []string
+type sample struct {
+	Value   float64
+	GroupBy []string
 }
 
-func NewFloat64Item(f float64, labels ...string) Float64Item {
-	return Float64Item{
-		Value:  f,
-		Labels: labels,
+func NewSample(f float64, groupBy ...string) sample {
+	return sample{
+		Value:   f,
+		GroupBy: groupBy,
 	}
 }
 
@@ -26,9 +27,9 @@ type Worker struct {
 	Interval time.Duration
 }
 
-func NewWorker() Worker {
-	return Worker{
-		Interval: 10 * time.Second,
+func NewWorker(interval time.Duration) *Worker {
+	return &Worker{
+		Interval: interval,
 		Done:     make(chan struct{}),
 	}
 }
@@ -41,17 +42,23 @@ func GetHeader(cs Columns) []string {
 	return columnNames
 }
 
-func (w Worker) BatchGenerateMatrix(mc chan<- [][]string, fiCh <-chan Float64Item, cs Columns) {
+func (w *Worker) Start(rc chan<- []string, fiCh <-chan sample, cs Columns) {
 	ticker := time.NewTicker(w.Interval)
-	var fis []Float64Item
+	var fis []sample
 	for {
 		select {
 		case <-ticker.C:
-			mc <- generateMatrix(fis, cs)
+			m := GenerateMatrix(fis, cs)
+			for i := 0; i < len(m); i++ {
+				rc <- m[i]
+			}
 		case <-w.Done:
 			ticker.Stop()
-			mc <- generateMatrix(fis, cs)
-			close(mc)
+			m := GenerateMatrix(fis, cs)
+			for i := 0; i < len(m); i++ {
+				rc <- m[i]
+			}
+			close(rc)
 			return
 		case f := <-fiCh:
 			fis = append(fis, f)
@@ -60,27 +67,32 @@ func (w Worker) BatchGenerateMatrix(mc chan<- [][]string, fiCh <-chan Float64Ite
 	}
 }
 
-func generateMatrix(fis []Float64Item, cs Columns) [][]string {
+func (w *Worker) Stop() {
+	close(w.Done)
+}
+
+func GenerateMatrix(s []sample, cs Columns) [][]string {
 	var mat [][]string
-	keys, valuesMap, labelsMap := groupByLabels(fis)
+	keys, valuesMap, labelsMap := groupByLabels(s)
 	for i := 0; i < len(keys); i++ {
 		mat = append(mat, generateRow(valuesMap[keys[i]], labelsMap[keys[i]], cs))
 	}
 	return mat
 }
 
-func groupByLabels(fis []Float64Item) ([]string, map[string][]float64, map[string][]string) {
+func groupByLabels(s []sample) ([]string, map[string][]float64, map[string][]string) {
 	var keys []string
 	valuesMap := make(map[string][]float64)
 	labelsMap := make(map[string][]string)
-	for i := 0; i < len(fis); i++ {
-		key := getKeyByLabels(fis[i].Labels)
+	for i := 0; i < len(s); i++ {
+		key := getKeyByLabels(s[i].GroupBy)
 		if _, ok := valuesMap[key]; !ok {
 			keys = append(keys, key)
-			labelsMap[key] = fis[i].Labels
+			labelsMap[key] = s[i].GroupBy
 		}
-		valuesMap[key] = append(valuesMap[key], fis[i].Value)
+		valuesMap[key] = append(valuesMap[key], s[i].Value)
 	}
+	sort.Strings(keys)
 	return keys, valuesMap, labelsMap
 }
 
@@ -89,7 +101,7 @@ func generateRow(fs []float64, labels []string, cs Columns) []string {
 	var labelIdx int
 	for i := 0; i < len(cs); i++ {
 		switch cs[i].Type {
-		case LABEL:
+		case GROUP:
 			row = append(row, labels[labelIdx])
 			labelIdx++
 		case STATS:
