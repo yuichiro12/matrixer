@@ -48,13 +48,13 @@ func (w *Worker) Start(rc chan<- []string, fiCh <-chan sample, cs Columns) {
 	for {
 		select {
 		case <-ticker.C:
-			m := GenerateMatrix(fis, cs)
+			m := generateMatrix(fis, cs)
 			for i := 0; i < len(m); i++ {
 				rc <- m[i]
 			}
 		case <-w.Done:
 			ticker.Stop()
-			m := GenerateMatrix(fis, cs)
+			m := generateMatrix(fis, cs)
 			for i := 0; i < len(m); i++ {
 				rc <- m[i]
 			}
@@ -71,7 +71,7 @@ func (w *Worker) Stop() {
 	close(w.Done)
 }
 
-func GenerateMatrix(s []sample, cs Columns) [][]string {
+func generateMatrix(s []sample, cs Columns) [][]string {
 	var mat [][]string
 	keys, valuesMap, labelsMap := groupByLabels(s)
 	for i := 0; i < len(keys); i++ {
@@ -110,9 +110,4 @@ func generateRow(fs []float64, labels []string, cs Columns) []string {
 		}
 	}
 	return row
-}
-
-// returns float64 as Millisecond
-func DtoF(dur time.Duration) float64 {
-	return float64(dur) / float64(time.Millisecond)
 }

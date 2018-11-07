@@ -65,6 +65,7 @@ func GetGroupColumns(names ...string) Columns {
 }
 
 func GetDefaultStatColumns() Columns {
+	// ignored errors because package 'stats' returns NaN as float64 whenever err != nil
 	return Columns{
 		{
 			Name: "count",
