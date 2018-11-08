@@ -34,34 +34,34 @@ func NewWorker(interval time.Duration) *Worker {
 	}
 }
 
-func GetHeader(cs Columns) []string {
+func GetHeader(columns Columns) []string {
 	var columnNames []string
-	for _, c := range cs {
+	for _, c := range columns {
 		columnNames = append(columnNames, c.Name)
 	}
 	return columnNames
 }
 
-func (w *Worker) Start(rc chan<- []string, fiCh <-chan sample, cs Columns) {
+func (w *Worker) Start(columns Columns, sender <-chan sample, receiver chan<- []string) {
 	ticker := time.NewTicker(w.Interval)
-	var fis []sample
+	var samples []sample
 	for {
 		select {
 		case <-ticker.C:
-			m := generateMatrix(fis, cs)
+			m := generateMatrix(samples, columns)
 			for i := 0; i < len(m); i++ {
-				rc <- m[i]
+				receiver <- m[i]
 			}
 		case <-w.Done:
 			ticker.Stop()
-			m := generateMatrix(fis, cs)
+			m := generateMatrix(samples, columns)
 			for i := 0; i < len(m); i++ {
-				rc <- m[i]
+				receiver <- m[i]
 			}
-			close(rc)
+			close(receiver)
 			return
-		case f := <-fiCh:
-			fis = append(fis, f)
+		case f := <-sender:
+			samples = append(samples, f)
 		default:
 		}
 	}
