@@ -14,7 +14,7 @@ import (
 func TestBatch(t *testing.T) {
 	rc := make(chan []string)
 	ec := make(chan error)
-	fc := make(chan sample)
+	fc := make(chan Sample)
 	cs := GetDefaultColumnsWithLoggedAt()
 	go NewWorker(10*time.Second).Start(rc, fc, cs)
 	go silkroad.NewLogger(",", "\n").LogRow(os.Stdout, rc, ec)
@@ -27,7 +27,7 @@ func TestBatch(t *testing.T) {
 
 func TestBatchWithOptions(t *testing.T) {
 	rc := make(chan []string)
-	fc := make(chan sample)
+	fc := make(chan Sample)
 	cs := GetDefaultStatColumns()
 	cs = append(cs, &Column{
 		Name: "p66",

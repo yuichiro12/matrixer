@@ -6,13 +6,13 @@ import (
 	"time"
 )
 
-type sample struct {
+type Sample struct {
 	Value   float64
 	GroupBy []string
 }
 
-func NewSample(f float64, groupBy ...string) sample {
-	return sample{
+func NewSample(f float64, groupBy ...string) Sample {
+	return Sample{
 		Value:   f,
 		GroupBy: groupBy,
 	}
@@ -42,9 +42,9 @@ func GetHeader(columns Columns) []string {
 	return columnNames
 }
 
-func (w *Worker) Start(columns Columns, sender <-chan sample, receiver chan<- []string) {
+func (w *Worker) Start(columns Columns, sender <-chan Sample, receiver chan<- []string) {
 	ticker := time.NewTicker(w.Interval)
-	var samples []sample
+	var samples []Sample
 	for {
 		select {
 		case <-ticker.C:
@@ -71,7 +71,7 @@ func (w *Worker) Stop() {
 	close(w.Done)
 }
 
-func generateMatrix(s []sample, cs Columns) [][]string {
+func generateMatrix(s []Sample, cs Columns) [][]string {
 	var mat [][]string
 	keys, valuesMap, labelsMap := groupByLabels(s)
 	for i := 0; i < len(keys); i++ {
@@ -80,7 +80,7 @@ func generateMatrix(s []sample, cs Columns) [][]string {
 	return mat
 }
 
-func groupByLabels(s []sample) ([]string, map[string][]float64, map[string][]string) {
+func groupByLabels(s []Sample) ([]string, map[string][]float64, map[string][]string) {
 	var keys []string
 	valuesMap := make(map[string][]float64)
 	labelsMap := make(map[string][]string)
