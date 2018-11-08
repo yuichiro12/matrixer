@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/yuichiro12/silkroad"
 	"github.com/montanaflynn/stats"
-	"github.com/yuichiro12/chantailor"
 )
 
 func TestBatch(t *testing.T) {
@@ -17,8 +17,8 @@ func TestBatch(t *testing.T) {
 	fc := make(chan sample)
 	cs := GetDefaultColumnsWithLoggedAt()
 	go NewWorker(10*time.Second).Start(rc, fc, cs)
-	go chantailor.NewLogger(",", "\n").LogRow(os.Stdout, rc, ec)
-	go chantailor.LogError(os.Stderr, ec)
+	go silkroad.NewLogger(",", "\n").LogRow(os.Stdout, rc, ec)
+	go silkroad.LogError(os.Stderr, ec)
 	for {
 		fc <- NewSample(rand.Float64())
 		time.Sleep(10 * time.Millisecond)
@@ -47,8 +47,8 @@ func TestBatchWithOptions(t *testing.T) {
 	cs = append(GetGroupColumns("fruits", "animals"), cs...)
 	go NewWorker(5*time.Second).Start(rc, fc, cs)
 	ec := make(chan error)
-	go chantailor.NewLogger(",", "\n").LogRow(os.Stdout, rc, ec)
-	go chantailor.LogError(os.Stderr, ec)
+	go silkroad.NewLogger(",", "\n").LogRow(os.Stdout, rc, ec)
+	go silkroad.LogError(os.Stderr, ec)
 	for {
 		fc <- NewSample(rand.Float64()+100, "banana", "dog")
 		fc <- NewSample(100, "orange", "pig")
