@@ -1,4 +1,4 @@
-package matrixer
+package pinkpanther
 
 import (
 	"fmt"

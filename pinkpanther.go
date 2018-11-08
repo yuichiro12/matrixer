@@ -1,4 +1,4 @@
-package matrixer
+package pinkpanther
 
 import (
 	"sort"
@@ -18,8 +18,8 @@ func NewSample(f float64, groupBy ...string) sample {
 	}
 }
 
-func getKeyByLabels(labels []string) string {
-	return strings.Join(labels, "&&&")
+func genKeyByGroups(groups []string) string {
+	return strings.Join(groups, "&&&")
 }
 
 type Worker struct {
@@ -85,7 +85,7 @@ func groupByLabels(s []sample) ([]string, map[string][]float64, map[string][]str
 	valuesMap := make(map[string][]float64)
 	labelsMap := make(map[string][]string)
 	for i := 0; i < len(s); i++ {
-		key := getKeyByLabels(s[i].GroupBy)
+		key := genKeyByGroups(s[i].GroupBy)
 		if _, ok := valuesMap[key]; !ok {
 			keys = append(keys, key)
 			labelsMap[key] = s[i].GroupBy
