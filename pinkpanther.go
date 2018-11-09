@@ -58,7 +58,6 @@ func (w *Worker) Start(columns Columns, sender <-chan Sample, receiver chan<- []
 			for i := 0; i < len(m); i++ {
 				receiver <- m[i]
 			}
-			close(receiver)
 			return
 		case f := <-sender:
 			samples = append(samples, f)

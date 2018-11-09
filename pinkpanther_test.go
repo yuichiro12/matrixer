@@ -7,8 +7,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/yuichiro12/silkroad"
 	"github.com/montanaflynn/stats"
+	"github.com/yuichiro12/silkroad"
 )
 
 func TestBatch(t *testing.T) {
@@ -16,8 +16,8 @@ func TestBatch(t *testing.T) {
 	ec := make(chan error)
 	fc := make(chan Sample)
 	cs := GetDefaultColumnsWithLoggedAt()
-	go NewWorker(10*time.Second).Start(rc, fc, cs)
-	go silkroad.NewLogger(",", "\n").LogRow(os.Stdout, rc, ec)
+	go NewWorker(10*time.Second).Start(cs, fc, rc)
+	go silkroad.NewLogger(",").LogRow(os.Stdout, rc, ec)
 	go silkroad.LogError(os.Stderr, ec)
 	for {
 		fc <- NewSample(rand.Float64())
@@ -45,9 +45,9 @@ func TestBatchWithOptions(t *testing.T) {
 	})
 	cs.AddPrefix("test_")
 	cs = append(GetGroupColumns("fruits", "animals"), cs...)
-	go NewWorker(5*time.Second).Start(rc, fc, cs)
+	go NewWorker(5*time.Second).Start(cs, fc, rc)
 	ec := make(chan error)
-	go silkroad.NewLogger(",", "\n").LogRow(os.Stdout, rc, ec)
+	go silkroad.NewLogger(",").LogRow(os.Stdout, rc, ec)
 	go silkroad.LogError(os.Stderr, ec)
 	for {
 		fc <- NewSample(rand.Float64()+100, "banana", "dog")
@@ -55,6 +55,27 @@ func TestBatchWithOptions(t *testing.T) {
 		fc <- NewSample(rand.Float64(), getRandomLabel1(), getRandomLabel2())
 		time.Sleep(10 * time.Millisecond)
 	}
+}
+
+func TestStop(t *testing.T) {
+	w := NewWorker(1 * time.Second)
+	spl := make(chan Sample)
+	s := make(chan []string)
+	for i := 0; i < 100; i++ {
+		go w.Start(GetDefaultColumnsWithLoggedAt(), spl, s)
+	}
+	go func() {
+		for {
+			spl <- NewSample(0.1)
+		}
+	}()
+	go func() {
+		for {
+			_ = <-s
+		}
+	}()
+	time.Sleep(3 * time.Second)
+	w.Stop()
 }
 
 func getRandomLabel1() string {
