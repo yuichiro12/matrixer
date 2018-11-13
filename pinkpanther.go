@@ -25,12 +25,14 @@ func genKeyByGroups(groups []string) string {
 type Worker struct {
 	Done     chan struct{}
 	Interval time.Duration
+	errChan  chan<- error
 }
 
-func NewWorker(interval time.Duration) *Worker {
+func NewWorker(interval time.Duration, errChan chan<- error) *Worker {
 	return &Worker{
 		Interval: interval,
 		Done:     make(chan struct{}),
+		errChan:  errChan,
 	}
 }
 
@@ -48,13 +50,20 @@ func (w *Worker) Start(columns Columns, sender <-chan Sample, receiver chan<- []
 	for {
 		select {
 		case <-ticker.C:
-			m := generateMatrix(samples, columns)
+			m, err := generateMatrix(samples, columns)
+			if err != nil {
+				w.errChan <- err
+			}
 			for i := 0; i < len(m); i++ {
 				receiver <- m[i]
 			}
+			samples = []Sample{}
 		case <-w.Done:
 			ticker.Stop()
-			m := generateMatrix(samples, columns)
+			m, err := generateMatrix(samples, columns)
+			if err != nil {
+				w.errChan <- err
+			}
 			for i := 0; i < len(m); i++ {
 				receiver <- m[i]
 			}
@@ -70,13 +79,17 @@ func (w *Worker) Stop() {
 	close(w.Done)
 }
 
-func generateMatrix(s []Sample, cs Columns) [][]string {
+func generateMatrix(s []Sample, cs Columns) ([][]string, error) {
 	var mat [][]string
 	keys, valuesMap, labelsMap := groupByLabels(s)
 	for i := 0; i < len(keys); i++ {
-		mat = append(mat, generateRow(valuesMap[keys[i]], labelsMap[keys[i]], cs))
+		row, err := generateRow(valuesMap[keys[i]], labelsMap[keys[i]], cs)
+		if err != nil {
+			return mat, err
+		}
+		mat = append(mat, row)
 	}
-	return mat
+	return mat, nil
 }
 
 func groupByLabels(s []Sample) ([]string, map[string][]float64, map[string][]string) {
@@ -95,7 +108,7 @@ func groupByLabels(s []Sample) ([]string, map[string][]float64, map[string][]str
 	return keys, valuesMap, labelsMap
 }
 
-func generateRow(fs []float64, labels []string, cs Columns) []string {
+func generateRow(fs []float64, labels []string, cs Columns) ([]string, error) {
 	var row []string
 	var labelIdx int
 	for i := 0; i < len(cs); i++ {
@@ -104,9 +117,12 @@ func generateRow(fs []float64, labels []string, cs Columns) []string {
 			row = append(row, labels[labelIdx])
 			labelIdx++
 		case STATS:
-			st, _ := cs[i].Func(fs)
+			st, err := cs[i].Func(fs)
+			if err != nil {
+				return row, err
+			}
 			row = append(row, st)
 		}
 	}
-	return row
+	return row, nil
 }
