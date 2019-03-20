@@ -1,6 +1,8 @@
 package pinkpanther
 
 import (
+	"io"
+	"log"
 	"sort"
 	"strings"
 	"time"
@@ -44,7 +46,7 @@ func GetHeader(columns Columns) []string {
 	return columnNames
 }
 
-func (w *Worker) Start(columns Columns, sender <-chan Sample, receiver chan<- []string) {
+func (w *Worker) Start(columns Columns, sender <-chan Sample, receiver chan<- [][]string) {
 	ticker := time.NewTicker(w.Interval)
 	var samples []Sample
 	for {
@@ -54,10 +56,8 @@ func (w *Worker) Start(columns Columns, sender <-chan Sample, receiver chan<- []
 			if err != nil {
 				w.errChan <- err
 			}
-			for i := 0; i < len(m); i++ {
-				receiver <- m[i]
-			}
-			samples = []Sample{}
+			receiver <- m
+			samples = nil
 		case <-w.Done:
 			ticker.Stop()
 			m, err := generateMatrix(samples, columns)
@@ -65,7 +65,7 @@ func (w *Worker) Start(columns Columns, sender <-chan Sample, receiver chan<- []
 				w.errChan <- err
 			}
 			for i := 0; i < len(m); i++ {
-				receiver <- m[i]
+				receiver <- m
 			}
 			return
 		case f := <-sender:
@@ -125,4 +125,40 @@ func generateRow(fs []float64, labels []string, cs Columns) ([]string, error) {
 		}
 	}
 	return row, nil
+}
+
+type Logger struct {
+	w         io.Writer
+	errChan   chan error
+	Separator string
+}
+
+func NewLogger(w io.Writer, errChan chan error, sep string) Logger {
+	return Logger{
+		w:         w,
+		errChan:   errChan,
+		Separator: sep,
+	}
+}
+
+func (l Logger) LogRows(rc <-chan [][]string) {
+	for rs := range rc {
+		for i := 0; i < len(rs); i++ {
+			l.LogRow(rs[i])
+		}
+	}
+}
+
+func (l Logger) LogRow(r []string) {
+	if _, err := l.w.Write([]byte(strings.Join(r, l.Separator) + "\n")); err != nil {
+		l.errChan <- err
+	}
+}
+
+func LogError(w io.Writer, ec <-chan error) {
+	for e := range ec {
+		if _, err := w.Write([]byte(e.Error() + "\n")); err != nil {
+			log.Fatalln(err)
+		}
+	}
 }

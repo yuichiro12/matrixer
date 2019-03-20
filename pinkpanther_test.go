@@ -8,17 +8,16 @@ import (
 	"time"
 
 	"github.com/montanaflynn/stats"
-	"github.com/yuichiro12/silkroad"
 )
 
 func TestBatch(t *testing.T) {
-	rc := make(chan []string)
+	rc := make(chan [][]string)
 	ec := make(chan error)
 	fc := make(chan Sample)
 	cs := GetDefaultColumnsWithLoggedAt()
 	go NewWorker(10*time.Second, ec).Start(cs, fc, rc)
-	go silkroad.NewLogger(os.Stdout, ec, ",").LogRow(rc)
-	go silkroad.LogError(os.Stderr, nil)
+	go NewLogger(os.Stdout, ec, ",").LogRows(rc)
+	go LogError(os.Stderr, nil)
 	for {
 		fc <- NewSample(rand.Float64())
 		time.Sleep(10 * time.Millisecond)
@@ -26,7 +25,7 @@ func TestBatch(t *testing.T) {
 }
 
 func TestBatchWithOptions(t *testing.T) {
-	rc := make(chan []string)
+	rc := make(chan [][]string)
 	fc := make(chan Sample)
 	ec := make(chan error)
 	cs := GetDefaultStatColumns()
@@ -47,9 +46,9 @@ func TestBatchWithOptions(t *testing.T) {
 	cs.AddPrefix("test_")
 	cs = append(GetGroupColumns("fruits", "animals"), cs...)
 	go NewWorker(5*time.Second, ec).Start(cs, fc, rc)
-	go silkroad.NewLogger(os.Stdout, ec, ",").LogRow(rc)
-	go silkroad.LogError(os.Stderr, ec)
-	rc <- GetHeader(cs)
+	go NewLogger(os.Stdout, ec, ",").LogRows(rc)
+	go LogError(os.Stderr, ec)
+	rc <- [][]string{GetHeader(cs)}
 	for {
 		fc <- NewSample(rand.Float64()+100, "banana", "dog")
 		fc <- NewSample(100, "orange", "pig")
@@ -62,7 +61,7 @@ func TestStop(t *testing.T) {
 	ec := make(chan error)
 	w := NewWorker(1*time.Second, ec)
 	spl := make(chan Sample)
-	s := make(chan []string)
+	s := make(chan [][]string)
 	for i := 0; i < 100; i++ {
 		go w.Start(GetDefaultColumnsWithLoggedAt(), spl, s)
 	}
